@@ -1,0 +1,2 @@
+FP_Magang
+-DCATKIN_DEVEL_PREFIX=/home/gilbran/MagangIRIS/MagangIRIS-FP/devel -DCMAKE_INSTALL_PREFIX=/home/gilbran/MagangIRIS/MagangIRIS-FP/install -G Unix Makefiles

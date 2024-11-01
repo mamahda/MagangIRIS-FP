@@ -1,0 +1,8 @@
+prefix=/home/gilbran/MagangIRIS/MagangIRIS-FP/install
+
+Name: FP_Magang
+Description: Description of FP_Magang
+Version: 0.0.0
+Cflags: 
+Libs: -L${prefix}/lib 
+Requires: 
