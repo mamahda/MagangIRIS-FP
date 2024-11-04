@@ -3,6 +3,6 @@ prefix=/home/gilbran/MagangIRIS/MagangIRIS-FP/devel
 Name: FP_Magang
 Description: Description of FP_Magang
 Version: 0.0.0
-Cflags: 
+Cflags: -I/home/gilbran/MagangIRIS/MagangIRIS-FP/devel/include
 Libs: -L${prefix}/lib 
-Requires: 
+Requires: message_runtime

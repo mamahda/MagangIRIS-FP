@@ -38,7 +38,47 @@ if(NOT DEFINED CMAKE_CROSSCOMPILING)
 endif()
 
 if("x${CMAKE_INSTALL_COMPONENT}x" STREQUAL "xUnspecifiedx" OR NOT CMAKE_INSTALL_COMPONENT)
+  file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/share/FP_Magang/msg" TYPE FILE FILES
+    "/home/gilbran/MagangIRIS/MagangIRIS-FP/src/FP_Magang/msg/coordinate.msg"
+    "/home/gilbran/MagangIRIS/MagangIRIS-FP/src/FP_Magang/msg/PC2BS.msg"
+    "/home/gilbran/MagangIRIS/MagangIRIS-FP/src/FP_Magang/msg/BS2PC.msg"
+    )
+endif()
+
+if("x${CMAKE_INSTALL_COMPONENT}x" STREQUAL "xUnspecifiedx" OR NOT CMAKE_INSTALL_COMPONENT)
+  file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/share/FP_Magang/cmake" TYPE FILE FILES "/home/gilbran/MagangIRIS/MagangIRIS-FP/build/FP_Magang/catkin_generated/installspace/FP_Magang-msg-paths.cmake")
+endif()
+
+if("x${CMAKE_INSTALL_COMPONENT}x" STREQUAL "xUnspecifiedx" OR NOT CMAKE_INSTALL_COMPONENT)
+  file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/include" TYPE DIRECTORY FILES "/home/gilbran/MagangIRIS/MagangIRIS-FP/devel/include/FP_Magang")
+endif()
+
+if("x${CMAKE_INSTALL_COMPONENT}x" STREQUAL "xUnspecifiedx" OR NOT CMAKE_INSTALL_COMPONENT)
+  file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/share/roseus/ros" TYPE DIRECTORY FILES "/home/gilbran/MagangIRIS/MagangIRIS-FP/devel/share/roseus/ros/FP_Magang")
+endif()
+
+if("x${CMAKE_INSTALL_COMPONENT}x" STREQUAL "xUnspecifiedx" OR NOT CMAKE_INSTALL_COMPONENT)
+  file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/share/common-lisp/ros" TYPE DIRECTORY FILES "/home/gilbran/MagangIRIS/MagangIRIS-FP/devel/share/common-lisp/ros/FP_Magang")
+endif()
+
+if("x${CMAKE_INSTALL_COMPONENT}x" STREQUAL "xUnspecifiedx" OR NOT CMAKE_INSTALL_COMPONENT)
+  file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/share/gennodejs/ros" TYPE DIRECTORY FILES "/home/gilbran/MagangIRIS/MagangIRIS-FP/devel/share/gennodejs/ros/FP_Magang")
+endif()
+
+if("x${CMAKE_INSTALL_COMPONENT}x" STREQUAL "xUnspecifiedx" OR NOT CMAKE_INSTALL_COMPONENT)
+  execute_process(COMMAND "/usr/bin/python3" -m compileall "/home/gilbran/MagangIRIS/MagangIRIS-FP/devel/lib/python3/dist-packages/FP_Magang")
+endif()
+
+if("x${CMAKE_INSTALL_COMPONENT}x" STREQUAL "xUnspecifiedx" OR NOT CMAKE_INSTALL_COMPONENT)
+  file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/lib/python3/dist-packages" TYPE DIRECTORY FILES "/home/gilbran/MagangIRIS/MagangIRIS-FP/devel/lib/python3/dist-packages/FP_Magang")
+endif()
+
+if("x${CMAKE_INSTALL_COMPONENT}x" STREQUAL "xUnspecifiedx" OR NOT CMAKE_INSTALL_COMPONENT)
   file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/lib/pkgconfig" TYPE FILE FILES "/home/gilbran/MagangIRIS/MagangIRIS-FP/build/FP_Magang/catkin_generated/installspace/FP_Magang.pc")
+endif()
+
+if("x${CMAKE_INSTALL_COMPONENT}x" STREQUAL "xUnspecifiedx" OR NOT CMAKE_INSTALL_COMPONENT)
+  file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/share/FP_Magang/cmake" TYPE FILE FILES "/home/gilbran/MagangIRIS/MagangIRIS-FP/build/FP_Magang/catkin_generated/installspace/FP_Magang-msg-extras.cmake")
 endif()
 
 if("x${CMAKE_INSTALL_COMPONENT}x" STREQUAL "xUnspecifiedx" OR NOT CMAKE_INSTALL_COMPONENT)
