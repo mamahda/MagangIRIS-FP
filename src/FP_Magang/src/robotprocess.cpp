@@ -3,6 +3,7 @@
 #include <termios.h>
 #include <unistd.h>
 #include <stdio.h>
+#include <math.h>
 #include "FP_Magang/PC2BS.h"
 #include "FP_Magang/coordinate.h"
 #include "FP_Magang/BS2PC.h"
@@ -15,18 +16,21 @@ ros::Publisher pub;
 ros::Subscriber stat_sub;
 ros::Subscriber th_sub;
 ros::Subscriber coord_sub;
+ros::Subscriber robot_sub;
+ros::Subscriber enc_sub;
 ros::Timer init;
 ros::Timer loop;
 FP_Magang::PC2BS cmd;
 
 int basestatus;
-int resstats, prevstats, stats, xtu, ytu;
+int resstats, prevstats, stats;
+int speed = 250;
+double posth = 0, posx = 0, posy = 0;
 double motor1 = 0, motor2 = 0, motor3 = 0;
-double angle1 = 0, angle2 = 120, angle3 = 240;
-double angle1Rad = angle1 * RAD;
-double angle2Rad = angle2 * RAD;
-double angle3Rad = angle3 * RAD;
+double angle1 = 0, angle2 = 120, angle3 = 240, anglel = 45, angler = 315;
+double angle1Rad, angle2Rad, angle3Rad, anglelRad, anglerRad;
 double bx = 0, by = 0, vx = 0, vy = 0, vth = 0, th;
+double rx, ry, tx, ty;
 char keyb;
 
 void inkey() {
@@ -40,48 +44,42 @@ void inkey() {
     tcsetattr(STDIN_FILENO, TCSANOW, &oldt);  // Kembalikan pengaturan lama
 }
 
-void inversekinematic(double vx, double vy, double vth) {
-    motor1 = vx * cos(angle1Rad) + vy * sin(angle1Rad) + vth;
-    motor2 = vx * cos(angle2Rad) + vy * sin(angle2Rad) + vth;
-    motor3 = vx * cos(angle3Rad) + vy * sin(angle3Rad) + vth;
-    ROS_INFO("motor1=%.2f motor2=%.2f motor3=%.2f", motor1, motor2, motor3);
+void motorspeed(double vy, double vx, double vth = 0) {
+    motor1 = vy * -1 + vx * 0 + vth;
+    motor2 = vy * 0.5 + vx * 0.86602540378 + vth;
+    motor3 = vy * 0.5 - vx * 0.86602540378 + vth;
+    // ROS_INFO("motor1=%.2f motor2=%.2f motor3=%.2f", motor1, motor2, motor3);
 
 }
 
 void robotspeed(double motor_input1, double motor_input2, double motor_input3) {
-    vx = (2.0 / 3.0) * (motor_input1 * cos(angle1Rad) + motor_input2 * cos(angle2Rad) + motor_input3 * cos(angle3Rad));
-    vy = (2.0 / 3.0) * (motor_input1 * sin(angle1Rad) + motor_input2 * sin(angle2Rad) + motor_input3 * sin(angle3Rad));
+    vy = (2.0 / 3.0) * (motor_input1 * cos(angle1Rad) + motor_input2 * cos(angle2Rad) + motor_input3 * cos(angle3Rad));
+    vx = (2.0 / 3.0) * (motor_input1 * sin(angle1Rad) + motor_input2 * sin(angle2Rad) + motor_input3 * sin(angle3Rad));
     vth = (motor_input1 + motor_input2 + motor_input3) / 3.0;
-    double tempvx = vx * cos(th) - vy * sin(th);
-    double tempvy = vx * cos(th) + vy * sin(th);
-    vx = tempvx;
-    vy = tempvy;
-
-    inversekinematic(vx, vy, vth);
-    ROS_INFO("vx=%.2f vy=%.2f vth=%.2f", vx, vy, vth);
+    // ROS_INFO("vy=%.2f vx=%.2f vth=%.2f", vy, vx, vth);
+    motorspeed(vy, vx, vth);
 }
 
 void status1() {
-    int speed = 250;
     inkey();
 
     switch (keyb) {
-    case 'w': // Move forward
+    case 'w':
         robotspeed(0, speed, -speed);
         break;
-    case 's': // Move backward
+    case 's':
         robotspeed(0, -speed, speed);
         break;
-    case 'd': // Move right
+    case 'd':
         robotspeed(speed, -(speed * 0.5), -(speed * 0.5));
         break;
-    case 'a': // Move left
-        robotspeed(-speed, (-speed * 0.5), (speed * 0.5));
+    case 'a':
+        robotspeed(-speed, (speed * 0.5), (speed * 0.5));
         break;
-    case 'q': // Rotate counterclockwise
+    case 'q':
         robotspeed(speed, speed, speed);
         break;
-    case 'e': // Rotate clockwise
+    case 'e':
         robotspeed(-speed, -speed, -speed);
         break;
     default:
@@ -90,9 +88,58 @@ void status1() {
     }
 }
 
+void status2() {
+    static float v_x2 = speed * 0.5;
+    static float v_y2 = speed * 0.5;
+
+    double sudut = atan2(by - posy, bx - posx);
+    posth = sudut * DEG;
+
+    double distance = sqrt(pow(bx - posx, 2) + pow(by - posy, 2));
+    ROS_INFO("Current Position: (%.2f, %.2f), Target: (%.2f, %.2f), Distance: %.2f", posx, posy, bx, by, distance);
+
+    if (distance > 0) {
+        vx = v_x2 * cos(sudut);
+        vy = v_y2 * sin(sudut);
+
+        posx += (vx / 50);
+        posy += (vy / 50);
+
+        motorspeed(-vx, vy);
+    }
+}
+
+void status3() {
+    static float v_x2 = speed * 0.5;
+    static float v_y2 = speed * 0.5;
+
+    // Calculate angle and heading toward the target (tx, ty)
+    double sudut = atan2(ty - posy, tx - posx);
+    posth = sudut * DEG;
+
+    double distance = sqrt(pow(tx - posx, 2) + pow(ty - posy, 2));
+    ROS_INFO("Current Position: (%.2f, %.2f), Target: (%.2f, %.2f), Distance: %.2f", posx, posy, tx, ty, distance);
+
+    if (distance > 5) { // Adjust threshold distance as needed
+        vx = v_x2 * cos(sudut);
+        vy = v_y2 * sin(sudut);
+
+        posx += (vx / 50);
+        posy += (vy / 50);
+
+        motorspeed(-vx, vy);
+    }
+    else {
+        vx = 0;
+        vy = 0;
+        motorspeed(0, 0); // Stop robot when close enough
+    }
+}
+
 void statusCallback(const FP_Magang::BS2PC::ConstPtr& msg) {
-    ROS_INFO("Received status = %d", static_cast<int>(msg->status));
-    if (prevstats != msg->status) {
+    // ROS_INFO("Received status = %d", static_cast<int>(msg->status));
+    stats = static_cast<int>(msg->status);
+    if (prevstats != stats) {
         switch (static_cast<int>(msg->status)) {
         case 1:
             ROS_INFO("Status 1");
@@ -117,8 +164,6 @@ void statusCallback(const FP_Magang::BS2PC::ConstPtr& msg) {
     }
     stats = msg->status;
     prevstats = msg->status;
-    xtu = msg->tujuan_x;
-    ytu = msg->tujuan_y;
 }
 
 void thetaCallback(const FP_Magang::BS2PC::ConstPtr& msg) {
@@ -128,20 +173,46 @@ void thetaCallback(const FP_Magang::BS2PC::ConstPtr& msg) {
             th = -th + 180;
         }
         else if (th < -180) {
-            th = -th - 180;
+            th = th + 360;
         }
     }
-    th = th * RAD;
-    ROS_INFO("Received theta: %.0f", th * DEG);
-
+    // ROS_INFO("Received theta: %.0f", th);
+    angle1 = 0 + th;
+    angle2 = 120 + th;
+    angle3 = 240 + th;
+    angle1Rad = angle1 * RAD;
+    angle2Rad = angle2 * RAD;
+    angle3Rad = angle3 * RAD;
+    anglelRad = anglel * RAD;
+    anglerRad = angler * RAD;
+    // ROS_INFO("angle1=%.2f angle2=%.2f angle3=%.2f", angle1, angle2, angle3);
 }
 
-void coordinateCallback(const FP_Magang::coordinate::ConstPtr& msg) {
+void coordinateBolaCallback(const FP_Magang::coordinate::ConstPtr& msg) {
     if (basestatus != 1) {
         bx = msg->x;
         by = msg->y;
+        // ROS_INFO("Received coordinates: x=%.2f, y=%.2f", bx, by);
     }
-    ROS_INFO("Received coordinates: x=%.2f, y=%.2f", msg->x, msg->y);
+}
+
+void coordinateRobotCallback(const FP_Magang::BS2PC::ConstPtr& msg) {
+    tx = msg->tujuan_x;
+    ty = msg->tujuan_y;
+    // ROS_INFO("Received Robot coordinates: x=%.2f, y=%.2f", tx, ty);
+}
+
+void encoderSpeed(double left, double right) {
+    rx = -left * cos(anglel) + right * cos(anglel);
+    ry = left * sin(anglel) + right * sin(anglel);
+    // ROS_INFO("Received coordinates: x=%.2f, y=%.2f", rx, ry);
+}
+
+void encoderCallback(const FP_Magang::BS2PC::ConstPtr& msg) {
+    double left = msg->enc_left;
+    double right = msg->enc_right;
+
+    encoderSpeed(left, right);
 }
 
 void loopCallback(const ros::TimerEvent&) {
@@ -149,9 +220,9 @@ void loopCallback(const ros::TimerEvent&) {
     case 1111:
         status1();
         break;
-        // case 2222:
-        //     status2();
-        //     break;
+    case 2222:
+        status2();
+        break;
         // case 3333:
         //     status3();
         //     break;
@@ -174,6 +245,8 @@ void loopCallback(const ros::TimerEvent&) {
 void resetCallback(const ros::TimerEvent&) {
     if (resstats != prevstats) {
         FP_Magang::PC2BS reset;
+        bx = 0;
+        by = 0;
         motor1 = 0;
         motor2 = 0;
         motor3 = 0;
@@ -193,7 +266,9 @@ int main(int argc, char** argv) {
     init = nh.createTimer(ros::Duration(0.02), resetCallback);
     stat_sub = nh.subscribe("/bs2pc", 50, statusCallback);
     th_sub = nh.subscribe("/bs2pc", 50, thetaCallback);
-    coord_sub = nh.subscribe("/ball_coordinate", 50, coordinateCallback);
+    coord_sub = nh.subscribe("/ball_coordinate", 50, coordinateBolaCallback);
+    enc_sub = nh.subscribe("/bs2pc", 50, encoderCallback);
+    robot_sub = nh.subscribe("/bs2pc", 50, coordinateRobotCallback);
     loop = nh.createTimer(ros::Duration(0.02), loopCallback);
     pub = nh.advertise<FP_Magang::PC2BS>("/pc2bs", 50);
 

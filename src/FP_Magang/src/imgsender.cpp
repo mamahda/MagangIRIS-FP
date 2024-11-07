@@ -4,35 +4,31 @@
 #include <cv_bridge/cv_bridge.h>
 #include <opencv2/opencv.hpp>
 
+using namespace cv;
+
 int main(int argc, char** argv) {
     ros::init(argc, argv, "image_sender_node");
     ros::NodeHandle nh;
 
     ros::Publisher image_pub = nh.advertise<sensor_msgs::Image>("/camera/image_raw", 10);
-    cv::VideoCapture cap("/home/gilbran/MagangIRIS/MagangIRIS-FP/img/bola1.jpg");
+    Mat photo = imread("/home/gilbran/MagangIRIS/MagangIRIS-FP/src/FP_Magang/src/img/bola2.jpg");
+    Mat resized;
+    resize(photo, resized, Size(900, 600));
 
-    if (!cap.isOpened()) {
-        ROS_ERROR("Failed to open image");
-        return -1;
-    }
 
     ros::Rate loop_rate(10);
     while (ros::ok()) {
-        cv::Mat frame;
-        cap >> frame;
 
-        if (frame.empty()) {
-            ROS_WARN("Empty frame captured");
+        if (resized.empty()) {
             continue;
         }
 
-        sensor_msgs::ImagePtr msg = cv_bridge::CvImage(std_msgs::Header(), "bgr8", frame).toImageMsg();
+        sensor_msgs::ImagePtr msg = cv_bridge::CvImage(std_msgs::Header(), "bgr8", resized).toImageMsg();
 
         image_pub.publish(msg);
 
         ros::spinOnce();
         loop_rate.sleep();
     }
-    cap.release();
     return 0;
 }

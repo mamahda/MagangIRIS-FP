@@ -1,0 +1,5 @@
+<launch>
+    <node name="imgsender" pkg="FP_Magang" type="imgsender" output="screen"/>
+    <node name="imgreceiver" pkg="FP_Magang" type="imgreceiver" output="screen"/>
+    <node name="robotprocess" pkg="FP_Magang" type="robotprocess" output="screen"/>
+</launch>

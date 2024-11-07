@@ -42,12 +42,9 @@ void imageCallback(const sensor_msgs::ImageConstPtr& msg) {
                 coord_msg.y = y;
                 coord_pub.publish(coord_msg);
 
-                ROS_INFO("Orange object detected at coordinates: x = %f, y = %f", x, y);
+                // ROS_INFO("Orange object detected at coordinates: x = %f, y = %f", x, y);
             }
         }
-
-        // (Optional) Display the result (for debugging)
-        imshow("Original Image", img);
         waitKey(1);
     }
     catch (cv_bridge::Exception& e) {

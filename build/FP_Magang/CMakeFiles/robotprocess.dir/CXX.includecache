@@ -65,6 +65,8 @@ unistd.h
 -
 stdio.h
 -
+math.h
+-
 FP_Magang/PC2BS.h
 /home/gilbran/MagangIRIS/MagangIRIS-FP/src/FP_Magang/src/FP_Magang/PC2BS.h
 FP_Magang/coordinate.h
