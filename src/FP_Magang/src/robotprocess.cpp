@@ -148,8 +148,8 @@ void status2() {
 
     if (distance > 0.1) {
         PID(bx, by);
-        posx += (vy / 50);
-        posy += (vx / 50);
+        posx = ry;
+        posy = rx;
     }
     else {
         motorspeed(0, 0, 0);
@@ -204,7 +204,7 @@ void thetaCallback(const FP_Magang::BS2PC::ConstPtr& msg) {
     th = msg->th;
     while (th > 180 || th < -180) {
         if (th > 180) {
-            th = -th + 180;
+            th = th - 360;
         }
         else if (th < -180) {
             th = th + 360;
