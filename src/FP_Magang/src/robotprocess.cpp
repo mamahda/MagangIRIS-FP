@@ -9,8 +9,8 @@
 #include "FP_Magang/BS2PC.h"
 
 #define PI 3.141592654
-#define RAD 0.0174532925199 // PI/180
-#define DEG 57.295779513082 // 180/PI
+#define RAD 0.0174532925199
+#define DEG 57.295779513082
 
 ros::Publisher pub;
 ros::Subscriber stat_sub;
@@ -25,23 +25,26 @@ FP_Magang::PC2BS cmd;
 int basestatus;
 int resstats, prevstats, stats;
 int speed = 250;
-double posth = 0, posx = 0, posy = 0;
+double posx = 0, posy = 0;
 double motor1 = 0, motor2 = 0, motor3 = 0;
 double angle1 = 0, angle2 = 120, angle3 = 240, anglel = 45, angler = 315;
 double angle1Rad, angle2Rad, angle3Rad, anglelRad, anglerRad;
 double bx = 0, by = 0, vx = 0, vy = 0, vth = 0, th;
 double rx, ry, tx, ty;
+double Kp = 0.5, Ki = 0.01, Kd = 0.05;
+double integral = 0, preverror = 0;
+bool carryball = false;
 char keyb;
 
 void inkey() {
     static struct termios oldt;
     static struct termios newt;
-    tcgetattr(STDIN_FILENO, &oldt);           // Simpan pengaturan lama
+    tcgetattr(STDIN_FILENO, &oldt);
     newt = oldt;
-    newt.c_lflag &= ~(ICANON);                 // Non-blocking input
-    tcsetattr(STDIN_FILENO, TCSANOW, &newt);  // Terapkan pengaturan baru
-    keyb = getchar();  // Baca karakter (non-blocking)
-    tcsetattr(STDIN_FILENO, TCSANOW, &oldt);  // Kembalikan pengaturan lama
+    newt.c_lflag &= ~(ICANON);
+    tcsetattr(STDIN_FILENO, TCSANOW, &newt);
+    keyb = getchar();
+    tcsetattr(STDIN_FILENO, TCSANOW, &oldt);
 }
 
 void motorspeed(double vy, double vx, double vth = 0) {
@@ -49,7 +52,6 @@ void motorspeed(double vy, double vx, double vth = 0) {
     motor2 = vy * 0.5 + vx * 0.86602540378 + vth;
     motor3 = vy * 0.5 - vx * 0.86602540378 + vth;
     // ROS_INFO("motor1=%.2f motor2=%.2f motor3=%.2f", motor1, motor2, motor3);
-
 }
 
 void robotspeed(double motor_input1, double motor_input2, double motor_input3) {
@@ -60,9 +62,22 @@ void robotspeed(double motor_input1, double motor_input2, double motor_input3) {
     motorspeed(vy, vx, vth);
 }
 
+void kickball(float power) {
+    if (carryball)
+    {
+        float kickangle = th * RAD;
+        by += power * cos(kickangle);
+        bx += power * sin(kickangle);
+        carryball = false;
+    }
+}
+
 void status1() {
     inkey();
-
+    if (carryball) {
+        by = rx;
+        bx = ry;
+    }
     switch (keyb) {
     case 'w':
         robotspeed(0, speed, -speed);
@@ -82,57 +97,77 @@ void status1() {
     case 'e':
         robotspeed(-speed, -speed, -speed);
         break;
+    case 'z':
+        robotspeed(0, 0, 0);
+        if (sqrt(pow(bx - rx, 2) + pow(by - ry, 2)) <= 10)
+        {
+            carryball = true;
+        }
+        break;
+    case 'x':
+        robotspeed(0, 0, 0);
+        carryball = false;
+        break;
+    case 'o':
+        robotspeed(0, 0, 0);
+        kickball(100);
+        break;
+    case 'p':
+        robotspeed(0, 0, 0);
+        kickball(300);
+        break;
     default:
         robotspeed(0, 0, 0);
         return;
     }
+    ROS_INFO("bx = %f, by = %f, rx = %f, ry = %f, %d", bx, by, rx, ry, carryball);
+
+}
+
+void PID(double targetx, double targety) {
+    double distance = sqrt(pow(targetx - posx, 2) + pow(targety - posy, 2));
+    double targetangle = atan2(targety - posy, targetx - posx);
+
+    double error = distance;
+    integral += error * 0.02;
+    double derivative = (error - preverror) / 0.02;
+    double output = Kp * error + Ki * integral + Kd * derivative;
+
+    preverror = error;
+
+    vy = output * cos(targetangle);
+    vx = output * sin(targetangle);
+
+    motorspeed(-vy, vx, targetangle * DEG);
 }
 
 void status2() {
-    static float v_x2 = speed * 0.5;
-    static float v_y2 = speed * 0.5;
-
-    double sudut = atan2(by - posy, bx - posx);
-    posth = sudut * DEG;
-
     double distance = sqrt(pow(bx - posx, 2) + pow(by - posy, 2));
+
     ROS_INFO("Current Position: (%.2f, %.2f), Target: (%.2f, %.2f), Distance: %.2f", posx, posy, bx, by, distance);
 
-    if (distance > 0) {
-        vx = v_x2 * cos(sudut);
-        vy = v_y2 * sin(sudut);
-
-        posx += (vx / 50);
-        posy += (vy / 50);
-
-        motorspeed(-vx, vy);
+    if (distance > 0.1) {
+        PID(bx, by);
+        posx += (vy / 50);
+        posy += (vx / 50);
+    }
+    else {
+        motorspeed(0, 0, 0);
     }
 }
 
 void status3() {
-    static float v_x2 = speed * 0.5;
-    static float v_y2 = speed * 0.5;
-
-    // Calculate angle and heading toward the target (tx, ty)
-    double sudut = atan2(ty - posy, tx - posx);
-    posth = sudut * DEG;
-
     double distance = sqrt(pow(tx - posx, 2) + pow(ty - posy, 2));
+
     ROS_INFO("Current Position: (%.2f, %.2f), Target: (%.2f, %.2f), Distance: %.2f", posx, posy, tx, ty, distance);
 
-    if (distance > 5) { // Adjust threshold distance as needed
-        vx = v_x2 * cos(sudut);
-        vy = v_y2 * sin(sudut);
-
-        posx += (vx / 50);
-        posy += (vy / 50);
-
-        motorspeed(-vx, vy);
+    if (distance > 0.1) {
+        PID(tx, ty);
+        posx = ry;
+        posy = rx;
     }
     else {
-        vx = 0;
-        vy = 0;
-        motorspeed(0, 0); // Stop robot when close enough
+        motorspeed(0, 0, 0);
     }
 }
 
@@ -162,8 +197,7 @@ void statusCallback(const FP_Magang::BS2PC::ConstPtr& msg) {
             break;
         }
     }
-    stats = msg->status;
-    prevstats = msg->status;
+    prevstats = stats;
 }
 
 void thetaCallback(const FP_Magang::BS2PC::ConstPtr& msg) {
@@ -176,7 +210,6 @@ void thetaCallback(const FP_Magang::BS2PC::ConstPtr& msg) {
             th = th + 360;
         }
     }
-    // ROS_INFO("Received theta: %.0f", th);
     angle1 = 0 + th;
     angle2 = 120 + th;
     angle3 = 240 + th;
@@ -185,11 +218,12 @@ void thetaCallback(const FP_Magang::BS2PC::ConstPtr& msg) {
     angle3Rad = angle3 * RAD;
     anglelRad = anglel * RAD;
     anglerRad = angler * RAD;
+    // ROS_INFO("Received theta: %.0f", th);
     // ROS_INFO("angle1=%.2f angle2=%.2f angle3=%.2f", angle1, angle2, angle3);
 }
 
 void coordinateBolaCallback(const FP_Magang::coordinate::ConstPtr& msg) {
-    if (basestatus != 1) {
+    if (stats == 2 || stats == 4) {
         bx = msg->x;
         by = msg->y;
         // ROS_INFO("Received coordinates: x=%.2f, y=%.2f", bx, by);
@@ -223,9 +257,9 @@ void loopCallback(const ros::TimerEvent&) {
     case 2222:
         status2();
         break;
-        // case 3333:
-        //     status3();
-        //     break;
+    case 3333:
+        status3();
+        break;
         // case 4444:
         //     status4();
         //     break;
@@ -234,9 +268,9 @@ void loopCallback(const ros::TimerEvent&) {
     }
 
     FP_Magang::PC2BS pesan;
-    pesan.motor1 = motor1;
-    pesan.motor2 = motor2;
-    pesan.motor3 = motor3;
+    pesan.motor1 = motor1 * 0.86602540256;
+    pesan.motor2 = motor2 * 0.86602540256;
+    pesan.motor3 = motor3 * 0.86602540256;
     pesan.bola_x = bx;
     pesan.bola_y = by;
     pub.publish(pesan);
@@ -247,6 +281,8 @@ void resetCallback(const ros::TimerEvent&) {
         FP_Magang::PC2BS reset;
         bx = 0;
         by = 0;
+        posx = 0;
+        posy = 0;
         motor1 = 0;
         motor2 = 0;
         motor3 = 0;
