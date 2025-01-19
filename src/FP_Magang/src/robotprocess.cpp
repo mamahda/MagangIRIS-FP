@@ -31,7 +31,7 @@ double angle1 = 0, angle2 = 120, angle3 = 240, anglel = 45, angler = 315;
 double angle1Rad, angle2Rad, angle3Rad, anglelRad, anglerRad;
 double bx = 0, by = 0, vx = 0, vy = 0, vth = 0, th;
 double rx, ry, tx, ty;
-double Kp = 0.5, Ki = 0.01, Kd = 0.05;
+double Kp = 1, Ki = 0.01, Kd = 0.05;
 double integral = 0, preverror = 0;
 bool carryball = false;
 char keyb;
@@ -121,7 +121,6 @@ void status1() {
         return;
     }
     ROS_INFO("bx = %f, by = %f, rx = %f, ry = %f, %d", bx, by, rx, ry, carryball);
-
 }
 
 void PID(double targetx, double targety) {
@@ -171,6 +170,82 @@ void status3() {
     }
 }
 
+void loopCallback(const ros::TimerEvent&) {
+    switch (basestatus) {
+    case 1111:
+        status1();
+        break;
+    case 2222:
+        status2();
+        break;
+    case 3333:
+        status3();
+        break;
+        // case 4444:
+        //     status4();
+        //     break;
+    default:
+        break;
+    }
+
+    FP_Magang::PC2BS pesan;
+    pesan.motor1 = motor1 * 0.86602540256;
+    pesan.motor2 = motor2 * 0.86602540256;
+    pesan.motor3 = motor3 * 0.86602540256;
+    pesan.bola_x = bx;
+    pesan.bola_y = by;
+    pub.publish(pesan);
+}
+
+void coordinateRobotCallback(const FP_Magang::BS2PC::ConstPtr& msg) {
+    tx = msg->tujuan_x;
+    ty = msg->tujuan_y;
+    // ROS_INFO("Received Robot coordinates: x=%.2f, y=%.2f", tx, ty);
+}
+
+void encoderSpeed(double left, double right) {
+    rx = -left * cos(anglel) + right * cos(anglel);
+    ry = left * sin(anglel) + right * sin(anglel);
+    // ROS_INFO("Received coordinates: x=%.2f, y=%.2f", rx, ry);
+}
+
+void encoderCallback(const FP_Magang::BS2PC::ConstPtr& msg) {
+    double left = msg->enc_left;
+    double right = msg->enc_right;
+
+    encoderSpeed(left, right);
+}
+
+void coordinateBolaCallback(const FP_Magang::coordinate::ConstPtr& msg) {
+    if (stats == 2 || stats == 4) {
+        bx = msg->x;
+        by = msg->y;
+        // ROS_INFO("Received coordinates: x=%.2f, y=%.2f", bx, by);
+    }
+}
+
+void thetaCallback(const FP_Magang::BS2PC::ConstPtr& msg) {
+    th = msg->th;
+    while (th > 180 || th < -180) {
+        if (th > 180) {
+            th = th - 360;
+        }
+        else if (th < -180) {
+            th = th + 360;
+        }
+    }
+    angle1 = 0 + th;
+    angle2 = 120 + th;
+    angle3 = 240 + th;
+    angle1Rad = angle1 * RAD;
+    angle2Rad = angle2 * RAD;
+    angle3Rad = angle3 * RAD;
+    anglelRad = anglel * RAD;
+    anglerRad = angler * RAD;
+    ROS_INFO("Received theta: %.0f", th);
+    // ROS_INFO("angle1=%.2f angle2=%.2f angle3=%.2f", angle1, angle2, angle3);
+}
+
 void statusCallback(const FP_Magang::BS2PC::ConstPtr& msg) {
     // ROS_INFO("Received status = %d", static_cast<int>(msg->status));
     stats = static_cast<int>(msg->status);
@@ -198,82 +273,6 @@ void statusCallback(const FP_Magang::BS2PC::ConstPtr& msg) {
         }
     }
     prevstats = stats;
-}
-
-void thetaCallback(const FP_Magang::BS2PC::ConstPtr& msg) {
-    th = msg->th;
-    while (th > 180 || th < -180) {
-        if (th > 180) {
-            th = th - 360;
-        }
-        else if (th < -180) {
-            th = th + 360;
-        }
-    }
-    angle1 = 0 + th;
-    angle2 = 120 + th;
-    angle3 = 240 + th;
-    angle1Rad = angle1 * RAD;
-    angle2Rad = angle2 * RAD;
-    angle3Rad = angle3 * RAD;
-    anglelRad = anglel * RAD;
-    anglerRad = angler * RAD;
-    // ROS_INFO("Received theta: %.0f", th);
-    // ROS_INFO("angle1=%.2f angle2=%.2f angle3=%.2f", angle1, angle2, angle3);
-}
-
-void coordinateBolaCallback(const FP_Magang::coordinate::ConstPtr& msg) {
-    if (stats == 2 || stats == 4) {
-        bx = msg->x;
-        by = msg->y;
-        // ROS_INFO("Received coordinates: x=%.2f, y=%.2f", bx, by);
-    }
-}
-
-void coordinateRobotCallback(const FP_Magang::BS2PC::ConstPtr& msg) {
-    tx = msg->tujuan_x;
-    ty = msg->tujuan_y;
-    // ROS_INFO("Received Robot coordinates: x=%.2f, y=%.2f", tx, ty);
-}
-
-void encoderSpeed(double left, double right) {
-    rx = -left * cos(anglel) + right * cos(anglel);
-    ry = left * sin(anglel) + right * sin(anglel);
-    // ROS_INFO("Received coordinates: x=%.2f, y=%.2f", rx, ry);
-}
-
-void encoderCallback(const FP_Magang::BS2PC::ConstPtr& msg) {
-    double left = msg->enc_left;
-    double right = msg->enc_right;
-
-    encoderSpeed(left, right);
-}
-
-void loopCallback(const ros::TimerEvent&) {
-    switch (basestatus) {
-    case 1111:
-        status1();
-        break;
-    case 2222:
-        status2();
-        break;
-    case 3333:
-        status3();
-        break;
-        // case 4444:
-        //     status4();
-        //     break;
-    default:
-        break;
-    }
-
-    FP_Magang::PC2BS pesan;
-    pesan.motor1 = motor1 * 0.86602540256;
-    pesan.motor2 = motor2 * 0.86602540256;
-    pesan.motor3 = motor3 * 0.86602540256;
-    pesan.bola_x = bx;
-    pesan.bola_y = by;
-    pub.publish(pesan);
 }
 
 void resetCallback(const ros::TimerEvent&) {
