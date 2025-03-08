@@ -1,7 +1,0 @@
-{
-  "cmake.sourceDirectory": "/home/gilbran/MagangIRIS/MagangIRIS-FP/src/FP_Magang",
-  "files.associations": {
-    "cmath": "cpp",
-    "complex": "cpp"
-  }
-}
